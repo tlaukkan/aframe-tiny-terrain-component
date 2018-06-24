@@ -27,5 +27,5 @@ module.exports = {
         ]),
         new webpack.IgnorePlugin(/wrtc/, /console-stamp/, /websocket/, /signaling-server/)
     ],
-    mode: "production"
+    mode: "development"
 };

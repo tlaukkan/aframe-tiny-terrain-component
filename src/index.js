@@ -1,4 +1,5 @@
 /* global AFRAME, THREE */
+const interpolate = require('color-interpolate');
 
 if (typeof AFRAME === 'undefined') {
     throw new Error('AFRAME not available.');
@@ -26,9 +27,9 @@ AFRAME.registerComponent('terrain', {
         let data = this.data;
         let el = this.el;
 
-        const x = data.x;
-        const y = data.y;
-        const z = data.z;
+        const cx = data.x;
+        const cy = data.y;
+        const cz = data.z;
 
         const radius = data.radius;
         const step = data.step;
@@ -38,12 +39,18 @@ AFRAME.registerComponent('terrain', {
         const dx = Math.cos(Math.PI / 3);
         const dy = Math.sin(Math.PI / 3);
 
+        let colormap = interpolate(['#d6a36e', '#a1d66e']);
+
+        let getColor = (y) => {
+            return colormap((y + 1)/2)
+        }
+
         let getHeight = (i, j) => {
-            return 2 * Math.sin(Math.PI * (i*i + j*j) / 100);
+            return Math.sin(Math.PI * (i*i + j*j) / 100);
         }
 
         let getVector3 = (i, j) => {
-            return new THREE.Vector3(x + i + j * dx, y + getHeight(x + i + j * dx,z + j * dy), z + j * dy)
+            return new THREE.Vector3(cx + i + j * dx, cy + getHeight(cx + i + j * dx,cz + j * dy), cz + j * dy)
         };
 
         let getCenter = (i, j, step, primary) => {
@@ -70,9 +77,10 @@ AFRAME.registerComponent('terrain', {
             }
 
             let face = new THREE.Face3(v + 0, v + 1, v + 2);
-            face.vertexColors[0] = new THREE.Color(0x00ff00);
-            face.vertexColors[1] = new THREE.Color(0x00ff00);
-            face.vertexColors[2] = new THREE.Color(0x00ff00);
+            console.log(JSON.stringify(this.geometry.vertices[v + 0]));
+            face.vertexColors[0] = new THREE.Color(getColor(this.geometry.vertices[v + 0].y - cy));
+            face.vertexColors[1] = new THREE.Color(getColor(this.geometry.vertices[v + 1].y - cy));
+            face.vertexColors[2] = new THREE.Color(getColor(this.geometry.vertices[v + 2].y - cy));
             this.geometry.faces.push(face);
         };
 
