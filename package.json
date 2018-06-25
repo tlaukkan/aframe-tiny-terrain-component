@@ -9,7 +9,7 @@
     "test:node": "mocha --exit ./test/node/*.js ./test/common/*.js",
     "test:browser": "karma start karma.config.js --browsers FirefoxHeadless",
     "test": "npm run test:node && npm run test:browser",
-    "dist": "webpack"
+    "dist": "webpack --display-modules"
   },
   "repository": {
     "type": "git",

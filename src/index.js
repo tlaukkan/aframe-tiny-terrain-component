@@ -39,15 +39,25 @@ AFRAME.registerComponent('terrain', {
         const dx = Math.cos(Math.PI / 3);
         const dy = Math.sin(Math.PI / 3);
 
-        let colormap = interpolate(['#d6a36e', '#a1d66e']);
+        const minHeight = -1;
+        const maxHeight = 1;
+        const palette = '#d6a36e, #a1d66e'.split(",").map(function(item) { return item.trim(); });
+        const paletteAccuracy = 2;
+
+        const colormap = interpolate(palette);
+        const colorValues = new Map();
 
         let getColor = (y) => {
-            return colormap((y + 1)/2)
-        }
+            const i = ((y - minHeight)/(maxHeight-minHeight)).toFixed(paletteAccuracy);
+            if (!colorValues.has(i)) {
+                colorValues.set(i, colormap(i));
+            }
+            return colorValues.get(i);
+        };
 
         let getHeight = (i, j) => {
             return Math.sin(Math.PI * (i*i + j*j) / 100);
-        }
+        };
 
         let getVector3 = (i, j) => {
             return new THREE.Vector3(cx + i + j * dx, cy + getHeight(cx + i + j * dx,cz + j * dy), cz + j * dy)
