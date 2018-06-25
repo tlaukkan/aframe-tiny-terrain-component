@@ -30,16 +30,16 @@ class TinyTerrain {
 window.TINY_TERRAIN = new TinyTerrain()
 
 // Unit vectors
-const ux = Math.cos(Math.PI / 3);
-const uz = Math.sin(Math.PI / 3);
+const ui = 1 / Math.sin(Math.PI / 3);
+const uj = 1;
 
 AFRAME.registerComponent('terrain', {
     schema: {
         x: {type: 'number', default: 0},
         y: {type: 'number', default: 0},
         z: {type: 'number', default: 0},
-        radius: {type: 'number', default: 200},
-        step: {type: 'number', default: 2},
+        radius: {type: 'number', default: 20},
+        step: {type: 'number', default: 1},
         heightFunction: {type: 'string', default: 'sin'},
         colorFunction: {type: 'string', default: 'linear-palette'},
         palette: {type: 'string', default: '#d6a36e, #a1d66e'},
@@ -56,6 +56,8 @@ AFRAME.registerComponent('terrain', {
         let el = this.el;
 
         this.radius = data.radius;
+        this.radiusSquared = this.radius * this.radius;
+
         this.updateDistanceSquared = (this.radius / 4) * (this.radius / 4)
         const step = data.step;
 
@@ -71,14 +73,14 @@ AFRAME.registerComponent('terrain', {
         const colorCache = new Map();
 
         let getVector3 = (i, j, cx, cy, cz) => {
-            return new THREE.Vector3(cx + i + j * ux, cy + getHeight(cx + i + j * ux,cz + j * uz), cz + j * uz)
+            return new THREE.Vector3(cx + i * ui + j * ui / 2, cy + getHeight(cx + i * ui + j * ui / 2,cz + j * uj), cz + j * uj)
         };
 
-        let getCenter = (i, j, step, primary) => {
+        let getTriangleDistanceSquared = (i, j, step, primary) => {
             if (primary) {
-                return new THREE.Vector3(i + j * ux + step / 2, 0, j * uz + uz * step * 0.5)
+                return Math.pow((i + 0.5) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
             } else {
-                return new THREE.Vector3(i + j * ux + step, 0, j * uz + uz * step * 0.5)
+                return Math.pow((i + 1) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
             }
         };
 
@@ -109,13 +111,13 @@ AFRAME.registerComponent('terrain', {
             this.geometry = new THREE.Geometry();
 
             let v = 0;
-            for (let i = -this.radius * 1.2; i < this.radius * 1.2; i += step) {
-                for (let j = -this.radius * 1.4; j < this.radius * 1.4; j += step) {
-                    if (getCenter(i, j, step, true).length() <= this.radius) {
+            for (let i = -this.radius; i < this.radius; i += step) {
+                for (let j = -this.radius; j < this.radius; j += step) {
+                    if (getTriangleDistanceSquared(i, j, step, true) <= this.radiusSquared) {
                         addFace(v, i, j, cx, cy, cz, step, true);
                         v += 3;
                     }
-                    if (getCenter(i, j, step, false).length() <= this.radius) {
+                    if (getTriangleDistanceSquared(i, j, step, false) <= this.radiusSquared) {
                         addFace(v, i, j, cx, cy, cz, step, false);
                         v += 3;
                     }
@@ -166,9 +168,9 @@ AFRAME.registerComponent('terrain', {
     update: function (oldData) {
         let data = this.data;
 
-        const cz = (data.z / (4 * uz)).toFixed() * 4 * uz;
-        const cx = (data.x / (4 * ux)).toFixed() * 4 * ux;
+        const cx = (data.x / (2 * ui)).toFixed() * 2 * ui;
         const cy = data.y;
+        const cz = (data.z / (4 * uj)).toFixed() * 4 * uj;
 
         if ((this.cx - cx) * (this.cx - cx) + (this.cz - cz) * (this.cz - cz) >= this.updateDistanceSquared) {
             console.log('recalculated terrain at : ' + this.data.x + ',' + this.data.y)
