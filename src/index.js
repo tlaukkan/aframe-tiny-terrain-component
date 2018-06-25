@@ -74,33 +74,6 @@ AFRAME.registerComponent('terrain', {
         this.primaryFaces = new Array(2 * this.radiusEdgeCount + 1);
         this.secondaryFaces = new Array(2 * this.radiusEdgeCount + 1);
 
-        for (var i = 0; i < 2 * this.radiusEdgeCount + 1; i++) {
-            this.vertices[i] = new Array(2 * this.radiusEdgeCount + 1);
-            this.vertexIndices[i] = new Array(2 * this.radiusEdgeCount + 1);
-            this.primaryFaces[i] = new Array(2 * this.radiusEdgeCount + 1);
-            this.secondaryFaces[i] = new Array(2 * this.radiusEdgeCount + 1);
-        }
-
-
-        let getTriangleDistanceSquared = (i, j, primary) => {
-            if (primary) {
-                return Math.pow((i + 0.5) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
-            } else {
-                return Math.pow((i + 1) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
-            }
-        };
-
-        for (let i = -this.radiusEdgeCount; i < this.radiusEdgeCount; i += 1) {
-            for (let j = -this.radiusEdgeCount; j < this.radiusEdgeCount; j += 1) {
-                if (getTriangleDistanceSquared(i, j, true) <= this.radiusEdgeCountSquared) {
-                    this.triangles.push(new Triangle(i, j, true));
-                }
-                if (getTriangleDistanceSquared(i, j, false) <= this.radiusEdgeCountSquared) {
-                    this.triangles.push(new Triangle(i, j, false));
-                }
-            }
-        }
-
         this.terrainUpdateDistanceSquared = Math.pow(this.radiusEdgeCount / 4, 2);
 
         let getHeight = window.TINY_TERRAIN.heightFunctions.get(data.heightFunction);
@@ -116,37 +89,45 @@ AFRAME.registerComponent('terrain', {
 
         this.geometry = new THREE.Geometry();
 
-        let vi = 0;
-        let updateVertice = (i, j, cx, cy, cz, add) => {
+        let updateVertex = (i, j, cx, cy, cz, vi, add) => {
+            const x = cx + this.edgeLength * (i * ui + j * ui / 2);
+            const z = cz + this.edgeLength * (j * uj);
+            const y = cy + getHeight(x, z);
             if (!this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount]) {
-                const x = cx + this.edgeLength * (i * ui + j * ui / 2);
-                const z = cz + this.edgeLength * (j * uj);
-                const vertice = new THREE.Vector3(x, cy + getHeight(x, z), z);
-                this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = vertice;
-                this.geometry.vertices.push(vertice);
+                const vertex = new THREE.Vector3(x, y, z);
+                this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = vertex;
+                this.geometry.vertices.push(vertex);
+
                 this.vertexIndices[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = vi;
-                vi++;
+                return vi + 1;
             } else {
                 if (!add) {
-                    const x = cx + this.edgeLength * (i * ui + j * ui / 2);
-                    const z = cz + this.edgeLength * (j * uj);
-                    this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount].x = x;
-                    this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount].y = getHeight(x , z);
-                    this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount].z = z;
+                    const vertex = this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount];
+                    vertex.x = x; vertex.y = y; vertex.z = z;
                 }
+            }
+            return vi;
+        };
+
+        let getTriangleDistanceSquared = (i, j, primary) => {
+            if (primary) {
+                return Math.pow((i + 0.5) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
+            } else {
+                return Math.pow((i + 1) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
             }
         };
 
-        let updateVertices = (i, j, cx, cy, cz, primary, add) => {
+        let updateVertices = (i, j, cx, cy, cz, vi, primary, add) => {
             if (primary) {
-                updateVertice(i, j, cx, cy, cz, add);
-                updateVertice(i, j + 1, cx, cy, cz, add);
-                updateVertice(i + 1, j, cx, cy, cz, add);
+                vi = updateVertex(i, j, cx, cy, cz, vi, add);
+                vi = updateVertex(i, j + 1, cx, cy, cz, vi, add);
+                vi = updateVertex(i + 1, j, cx, cy, cz, vi, add);
             } else {
-                updateVertice(i, j + 1, cx, cy, cz, add);
-                updateVertice(i + 1, j + 1, cx, cy, cz, add);
-                updateVertice(i + 1, j, cx, cy, cz, add);
+                vi = updateVertex(i, j + 1, cx, cy, cz, vi, add);
+                vi = updateVertex(i + 1, j + 1, cx, cy, cz, vi, add);
+                vi = updateVertex(i + 1, j, cx, cy, cz, vi, add);
             }
+            return vi;
         }
 
         let updateFaces = (i, j, cx, cy, cz, primary, add) => {
@@ -175,13 +156,13 @@ AFRAME.registerComponent('terrain', {
                     this.secondaryFaces[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = face
                 }
             }
-
         };
 
-        this.updateTerrain = (cx, cy, cz, add) =>
-        {
+        this.updateTerrain = (cx, cy, cz, add) => {
+
+            let vi = 0;
             this.triangles.forEach(t => {
-                updateVertices(t.i, t.j, cx, cy, cz, t.primary, add);
+                vi = updateVertices(t.i, t.j, cx, cy, cz, vi, t.primary, add);
                 updateFaces(t.i, t.j, cx, cy, cz, t.primary, add);
             });
 
@@ -207,7 +188,7 @@ AFRAME.registerComponent('terrain', {
                 el.setObject3D('wire', this.wire);
             }
 
-        }
+        };
 
         const cx = data.x;
         const cy = data.y;
@@ -215,6 +196,25 @@ AFRAME.registerComponent('terrain', {
         this.cx = cx;
         this.cy = cy;
         this.cz = cz;
+
+        for (let i = 0; i < 2 * this.radiusEdgeCount + 1; i++) {
+            this.vertices[i] = new Array(2 * this.radiusEdgeCount + 1);
+            this.vertexIndices[i] = new Array(2 * this.radiusEdgeCount + 1);
+            this.primaryFaces[i] = new Array(2 * this.radiusEdgeCount + 1);
+            this.secondaryFaces[i] = new Array(2 * this.radiusEdgeCount + 1);
+        }
+
+        for (let i = -this.radiusEdgeCount; i < this.radiusEdgeCount; i += 1) {
+            for (let j = -this.radiusEdgeCount; j < this.radiusEdgeCount; j += 1) {
+                if (getTriangleDistanceSquared(i, j, true) <= this.radiusEdgeCountSquared) {
+                    this.triangles.push(new Triangle(i, j, true));
+                }
+                if (getTriangleDistanceSquared(i, j, false) <= this.radiusEdgeCountSquared) {
+                    this.triangles.push(new Triangle(i, j, false));
+                }
+            }
+        }
+
         this.updateTerrain(cx, cy, cz, true)
     },
 
