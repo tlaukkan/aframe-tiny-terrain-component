@@ -27,6 +27,14 @@ class TinyTerrain {
     }
 }
 
+class Triangle {
+    constructor(i, j, primary) {
+        this.i = i
+        this.j = j
+        this.primary = primary
+    }
+}
+
 window.TINY_TERRAIN = new TinyTerrain()
 
 // Unit vectors
@@ -38,7 +46,7 @@ AFRAME.registerComponent('terrain', {
         x: {type: 'number', default: 0},
         y: {type: 'number', default: 0},
         z: {type: 'number', default: 0},
-        radius: {type: 'number', default: 15},
+        radiusEdgeCount: {type: 'number', default: 15},
         edgeLength: {type: 'number', default: 2},
         heightFunction: {type: 'string', default: 'sin'},
         colorFunction: {type: 'string', default: 'linear-palette'},
@@ -56,21 +64,44 @@ AFRAME.registerComponent('terrain', {
         let el = this.el;
 
         this.edgeLength = data.edgeLength;
-        this.radius = data.radius;
-        this.radiusSquared = this.radius * this.radius;
+        this.edgeLengthSquared = this.edgeLength * this.edgeLength;
+        this.radiusEdgeCount = data.radiusEdgeCount;
+        this.radiusEdgeCountSquared = this.radiusEdgeCount * this.radiusEdgeCount;
 
-        this.vertices = new Array(2 * this.radius + 1);
-        this.vertexIndices = new Array(2 * this.radius + 1);
-        this.primaryFaces = new Array(2 * this.radius + 1);
-        this.secondaryFaces = new Array(2 * this.radius + 1);
-        for (var i = 0; i < 2 * this.radius + 1; i++) {
-            this.vertices[i] = new Array(2 * this.radius + 1);
-            this.vertexIndices[i] = new Array(2 * this.radius + 1);
-            this.primaryFaces[i] = new Array(2 * this.radius + 1);
-            this.secondaryFaces[i] = new Array(2 * this.radius + 1);
+        this.triangles = new Array(Math.pow(2 * this.radiusEdgeCount + 1, 2));
+        this.vertices = new Array(2 * this.radiusEdgeCount + 1);
+        this.vertexIndices = new Array(2 * this.radiusEdgeCount + 1);
+        this.primaryFaces = new Array(2 * this.radiusEdgeCount + 1);
+        this.secondaryFaces = new Array(2 * this.radiusEdgeCount + 1);
+
+        for (var i = 0; i < 2 * this.radiusEdgeCount + 1; i++) {
+            this.vertices[i] = new Array(2 * this.radiusEdgeCount + 1);
+            this.vertexIndices[i] = new Array(2 * this.radiusEdgeCount + 1);
+            this.primaryFaces[i] = new Array(2 * this.radiusEdgeCount + 1);
+            this.secondaryFaces[i] = new Array(2 * this.radiusEdgeCount + 1);
         }
 
-        this.terrainUpdateDistanceSquared = Math.pow(this.radius / 4, 2);
+
+        let getTriangleDistanceSquared = (i, j, primary) => {
+            if (primary) {
+                return Math.pow((i + 0.5) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
+            } else {
+                return Math.pow((i + 1) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
+            }
+        };
+
+        for (let i = -this.radiusEdgeCount; i < this.radiusEdgeCount; i += 1) {
+            for (let j = -this.radiusEdgeCount; j < this.radiusEdgeCount; j += 1) {
+                if (getTriangleDistanceSquared(i, j, true) <= this.radiusEdgeCountSquared) {
+                    this.triangles.push(new Triangle(i, j, true));
+                }
+                if (getTriangleDistanceSquared(i, j, false) <= this.radiusEdgeCountSquared) {
+                    this.triangles.push(new Triangle(i, j, false));
+                }
+            }
+        }
+
+        this.terrainUpdateDistanceSquared = Math.pow(this.radiusEdgeCount / 4, 2);
 
         let getHeight = window.TINY_TERRAIN.heightFunctions.get(data.heightFunction);
         let getColor = window.TINY_TERRAIN.colorFunctions.get(data.colorFunction);
@@ -87,33 +118,24 @@ AFRAME.registerComponent('terrain', {
 
         let vi = 0;
         let updateVertice = (i, j, cx, cy, cz, add) => {
-            if (!this.vertices[i + this.radius][j + this.radius]) {
+            if (!this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount]) {
                 const x = cx + this.edgeLength * (i * ui + j * ui / 2);
                 const z = cz + this.edgeLength * (j * uj);
                 const vertice = new THREE.Vector3(x, cy + getHeight(x, z), z);
-                this.vertices[i + this.radius][j + this.radius] = vertice;
+                this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = vertice;
                 this.geometry.vertices.push(vertice);
-                this.vertexIndices[i + this.radius][j + this.radius] = vi;
+                this.vertexIndices[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = vi;
                 vi++;
             } else {
                 if (!add) {
                     const x = cx + this.edgeLength * (i * ui + j * ui / 2);
                     const z = cz + this.edgeLength * (j * uj);
-                    this.vertices[i + this.radius][j + this.radius].x = x;
-                    this.vertices[i + this.radius][j + this.radius].y = getHeight(x , z);
-                    this.vertices[i + this.radius][j + this.radius].z = z;
+                    this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount].x = x;
+                    this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount].y = getHeight(x , z);
+                    this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount].z = z;
                 }
             }
         };
-
-        let getTriangleDistanceSquared = (i, j, primary) => {
-            if (primary) {
-                return Math.pow((i + 0.5) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
-            } else {
-                return Math.pow((i + 1) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
-            }
-        };
-
 
         let updateVertices = (i, j, cx, cy, cz, primary, add) => {
             if (primary) {
@@ -129,28 +151,28 @@ AFRAME.registerComponent('terrain', {
 
         let updateFaces = (i, j, cx, cy, cz, primary, add) => {
             if (primary) {
-                let vi0 = this.vertexIndices[i + this.radius][j + this.radius];
-                let vi1 = this.vertexIndices[i + this.radius][j + 1 + this.radius];
-                let vi2 = this.vertexIndices[i + 1 + this.radius][j + this.radius];
-                let face = add ? new THREE.Face3(vi0, vi1, vi2) : this.primaryFaces[i + this.radius][j + this.radius];
+                let vi0 = this.vertexIndices[i + this.radiusEdgeCount][j + this.radiusEdgeCount];
+                let vi1 = this.vertexIndices[i + this.radiusEdgeCount][j + 1 + this.radiusEdgeCount];
+                let vi2 = this.vertexIndices[i + 1 + this.radiusEdgeCount][j + this.radiusEdgeCount];
+                let face = add ? new THREE.Face3(vi0, vi1, vi2) : this.primaryFaces[i + this.radiusEdgeCount][j + this.radiusEdgeCount];
                 face.vertexColors[0] = new THREE.Color(getColor(this.geometry.vertices[vi0].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
                 face.vertexColors[1] = new THREE.Color(getColor(this.geometry.vertices[vi1].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
                 face.vertexColors[2] = new THREE.Color(getColor(this.geometry.vertices[vi2].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
                 if (add) {
                     this.geometry.faces.push(face);
-                    this.primaryFaces[i + this.radius][j + this.radius] = face
+                    this.primaryFaces[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = face
                 }
             } else {
-                let vi0 = this.vertexIndices[i + this.radius][j + 1 + this.radius];
-                let vi1 = this.vertexIndices[i + 1 + this.radius][j + 1 + this.radius];
-                let vi2 = this.vertexIndices[i + 1 + this.radius][j + this.radius];
-                let face = add ? new THREE.Face3(vi0, vi1, vi2) : this.secondaryFaces[i + this.radius][j + this.radius];
+                let vi0 = this.vertexIndices[i + this.radiusEdgeCount][j + 1 + this.radiusEdgeCount];
+                let vi1 = this.vertexIndices[i + 1 + this.radiusEdgeCount][j + 1 + this.radiusEdgeCount];
+                let vi2 = this.vertexIndices[i + 1 + this.radiusEdgeCount][j + this.radiusEdgeCount];
+                let face = add ? new THREE.Face3(vi0, vi1, vi2) : this.secondaryFaces[i + this.radiusEdgeCount][j + this.radiusEdgeCount];
                 face.vertexColors[0] = new THREE.Color(getColor(this.geometry.vertices[vi0].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
                 face.vertexColors[1] = new THREE.Color(getColor(this.geometry.vertices[vi1].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
                 face.vertexColors[2] = new THREE.Color(getColor(this.geometry.vertices[vi2].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
                 if (add) {
                     this.geometry.faces.push(face);
-                    this.secondaryFaces[i + this.radius][j + this.radius] = face
+                    this.secondaryFaces[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = face
                 }
             }
 
@@ -158,18 +180,10 @@ AFRAME.registerComponent('terrain', {
 
         this.updateTerrain = (cx, cy, cz, add) =>
         {
-            for (let i = -this.radius; i < this.radius; i += 1) {
-                for (let j = -this.radius; j < this.radius; j += 1) {
-                    if (getTriangleDistanceSquared(i, j, true) <= this.radiusSquared) {
-                        updateVertices(i, j, cx, cy, cz, true, add);
-                        updateFaces(i, j, cx, cy, cz, true, add);
-                    }
-                    if (getTriangleDistanceSquared(i, j, false) <= this.radiusSquared) {
-                        updateVertices(i, j, cx, cy, cz, false, add);
-                        updateFaces(i, j, cx, cy, cz, false, add);
-                    }
-                }
-            }
+            this.triangles.forEach(t => {
+                updateVertices(t.i, t.j, cx, cy, cz, t.primary, add);
+                updateFaces(t.i, t.j, cx, cy, cz, t.primary, add);
+            });
 
             this.geometry.computeFaceNormals();
             this.geometry.computeVertexNormals();
@@ -211,7 +225,7 @@ AFRAME.registerComponent('terrain', {
         const cy = data.y;
         const cz = (data.z / (4 * uj)).toFixed() * 4 * uj;
 
-        if ((this.cx - cx) * (this.cx - cx) + (this.cz - cz) * (this.cz - cz) >= this.terrainUpdateDistanceSquared) {
+        if ((this.cx - cx) * (this.cx - cx) + (this.cz - cz) * (this.cz - cz) >= this.terrainUpdateDistanceSquared * this.edgeLengthSquared) {
             console.log('recalculated terrain at : ' + this.data.x + ',' + this.data.y)
             this.cx = cx;
             this.cy = cy;
@@ -230,7 +244,7 @@ AFRAME.registerPrimitive('a-terrain', {
         x: 'terrain.x',
         y: 'terrain.y',
         z: 'terrain.z',
-        radius: 'terrain.radius',
+        radiusEdgeCount: 'terrain.radiusEdgeCount',
         edgeLength: 'terrain.edgeLength'
     }
 });
