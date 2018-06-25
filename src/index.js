@@ -89,6 +89,14 @@ AFRAME.registerComponent('terrain', {
 
         this.geometry = new THREE.Geometry();
 
+        let getTriangleDistanceSquared = (i, j, primary) => {
+            if (primary) {
+                return Math.pow((i + 0.5) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
+            } else {
+                return Math.pow((i + 1) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
+            }
+        };
+
         let updateVertex = (i, j, cx, cy, cz, vi, add) => {
             const x = cx + this.edgeLength * (i * ui + j * ui / 2);
             const z = cz + this.edgeLength * (j * uj);
@@ -96,9 +104,9 @@ AFRAME.registerComponent('terrain', {
             if (!this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount]) {
                 const vertex = new THREE.Vector3(x, y, z);
                 this.vertices[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = vertex;
-                this.geometry.vertices.push(vertex);
-
                 this.vertexIndices[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = vi;
+
+                this.geometry.vertices.push(vertex);
                 return vi + 1;
             } else {
                 if (!add) {
@@ -107,14 +115,6 @@ AFRAME.registerComponent('terrain', {
                 }
             }
             return vi;
-        };
-
-        let getTriangleDistanceSquared = (i, j, primary) => {
-            if (primary) {
-                return Math.pow((i + 0.5) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
-            } else {
-                return Math.pow((i + 1) * ui + j * ui / 2, 2) + Math.pow((j + 0.5) * uj, 2)
-            }
         };
 
         let updateVertices = (i, j, cx, cy, cz, vi, primary, add) => {
@@ -130,31 +130,28 @@ AFRAME.registerComponent('terrain', {
             return vi;
         }
 
+        let setFaceVertexColor = (face, index, vi0, cy) => {
+            face.vertexColors[index] = new THREE.Color(getColor(this.geometry.vertices[vi0].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
+        }
+
+        let getVertexIndex = (i, j) => {
+            return this.vertexIndices[i + this.radiusEdgeCount][j + this.radiusEdgeCount];
+        }
+
         let updateFaces = (i, j, cx, cy, cz, primary, add) => {
-            if (primary) {
-                let vi0 = this.vertexIndices[i + this.radiusEdgeCount][j + this.radiusEdgeCount];
-                let vi1 = this.vertexIndices[i + this.radiusEdgeCount][j + 1 + this.radiusEdgeCount];
-                let vi2 = this.vertexIndices[i + 1 + this.radiusEdgeCount][j + this.radiusEdgeCount];
-                let face = add ? new THREE.Face3(vi0, vi1, vi2) : this.primaryFaces[i + this.radiusEdgeCount][j + this.radiusEdgeCount];
-                face.vertexColors[0] = new THREE.Color(getColor(this.geometry.vertices[vi0].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
-                face.vertexColors[1] = new THREE.Color(getColor(this.geometry.vertices[vi1].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
-                face.vertexColors[2] = new THREE.Color(getColor(this.geometry.vertices[vi2].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
-                if (add) {
-                    this.geometry.faces.push(face);
-                    this.primaryFaces[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = face
-                }
-            } else {
-                let vi0 = this.vertexIndices[i + this.radiusEdgeCount][j + 1 + this.radiusEdgeCount];
-                let vi1 = this.vertexIndices[i + 1 + this.radiusEdgeCount][j + 1 + this.radiusEdgeCount];
-                let vi2 = this.vertexIndices[i + 1 + this.radiusEdgeCount][j + this.radiusEdgeCount];
-                let face = add ? new THREE.Face3(vi0, vi1, vi2) : this.secondaryFaces[i + this.radiusEdgeCount][j + this.radiusEdgeCount];
-                face.vertexColors[0] = new THREE.Color(getColor(this.geometry.vertices[vi0].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
-                face.vertexColors[1] = new THREE.Color(getColor(this.geometry.vertices[vi1].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
-                face.vertexColors[2] = new THREE.Color(getColor(this.geometry.vertices[vi2].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
-                if (add) {
-                    this.geometry.faces.push(face);
-                    this.secondaryFaces[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = face
-                }
+            let vi0 = primary ? getVertexIndex(i, j)     : getVertexIndex(i, j + 1);
+            let vi1 = primary ? getVertexIndex(i, j + 1) : getVertexIndex(i + 1, j + 1);
+            let vi2 = primary ? getVertexIndex(i + 1, j) : getVertexIndex(i + 1, j);
+
+            let faces = primary ? this.primaryFaces : this.secondaryFaces;
+            let face = add ? new THREE.Face3(vi0, vi1, vi2) : faces[i + this.radiusEdgeCount][j + this.radiusEdgeCount];
+            setFaceVertexColor(face, 0, vi0, cy);
+            setFaceVertexColor(face, 1, vi1, cy);
+            setFaceVertexColor(face, 2, vi2, cy);
+
+            if (add) {
+                this.geometry.faces.push(face);
+                faces[i + this.radiusEdgeCount][j + this.radiusEdgeCount] = face
             }
         };
 
@@ -174,16 +171,9 @@ AFRAME.registerComponent('terrain', {
 
             if (add) {
                 this.material = new THREE.MeshLambertMaterial({color: 0xffffff, vertexColors: THREE.VertexColors});
-
-                this.wireMaterial = new THREE.MeshLambertMaterial({
-                    color: 0xdddddd,
-                    wireframe: true,
-                    vertexColors: THREE.VertexColors
-                });
-
+                this.wireMaterial = new THREE.MeshLambertMaterial({ color: 0xdddddd, wireframe: true,  vertexColors: THREE.VertexColors });
                 this.mesh = new THREE.Mesh(this.geometry, this.material);
                 this.wire = new THREE.Mesh(this.geometry, this.wireMaterial);
-
                 el.setObject3D('mesh', this.mesh);
                 el.setObject3D('wire', this.wire);
             }
