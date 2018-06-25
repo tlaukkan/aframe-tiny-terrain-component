@@ -38,7 +38,7 @@ AFRAME.registerComponent('terrain', {
         x: {type: 'number', default: 0},
         y: {type: 'number', default: 0},
         z: {type: 'number', default: 0},
-        radius: {type: 'number', default: 20},
+        radius: {type: 'number', default: 15},
         step: {type: 'number', default: 1},
         heightFunction: {type: 'string', default: 'sin'},
         colorFunction: {type: 'string', default: 'linear-palette'},
@@ -86,7 +86,7 @@ AFRAME.registerComponent('terrain', {
         this.geometry = new THREE.Geometry();
 
         let vi = 0
-        let pushVertice = (i, j, cx, cy, cz, add) => {
+        let updateVertice = (i, j, cx, cy, cz, add) => {
             if (!this.vertices[i + this.radius][j + this.radius]) {
                 const vertice = new THREE.Vector3(cx + i * ui + j * ui / 2, cy + getHeight(cx + i * ui + j * ui / 2,cz + j * uj), cz + j * uj);
                 this.vertices[i + this.radius][j + this.radius] = vertice;
@@ -111,19 +111,19 @@ AFRAME.registerComponent('terrain', {
         };
 
 
-        let pushTriangleVertices = (i, j, cx, cy, cz, step, primary, add) => {
+        let updateVertices = (i, j, cx, cy, cz, step, primary, add) => {
             if (primary) {
-                pushVertice(i, j, cx, cy, cz, add);
-                pushVertice(i, j + step, cx, cy, cz, add);
-                pushVertice(i + step, j, cx, cy, cz, add);
+                updateVertice(i, j, cx, cy, cz, add);
+                updateVertice(i, j + step, cx, cy, cz, add);
+                updateVertice(i + step, j, cx, cy, cz, add);
             } else {
-                pushVertice(i, j + step, cx, cy, cz, add);
-                pushVertice(i + step, j + step, cx, cy, cz, add);
-                pushVertice(i + step, j, cx, cy, cz, add);
+                updateVertice(i, j + step, cx, cy, cz, add);
+                updateVertice(i + step, j + step, cx, cy, cz, add);
+                updateVertice(i + step, j, cx, cy, cz, add);
             }
         }
 
-        let pushTriangleFace = (i, j, cx, cy, cz, step, primary, add) => {
+        let updateFaces = (i, j, cx, cy, cz, step, primary, add) => {
             if (primary) {
                 let vi0 = this.vertexIndices[i + this.radius][j + this.radius];
                 let vi1 = this.vertexIndices[i + this.radius][j + step + this.radius];
@@ -157,23 +157,23 @@ AFRAME.registerComponent('terrain', {
             for (let i = -this.radius; i < this.radius; i += step) {
                 for (let j = -this.radius; j < this.radius; j += step) {
                     if (getTriangleDistanceSquared(i, j, step, true) <= this.radiusSquared) {
-                        pushTriangleVertices(i, j, cx, cy, cz, step, true, add);
-                        pushTriangleFace(i, j, cx, cy, cz, step, true, add);
+                        updateVertices(i, j, cx, cy, cz, step, true, add);
+                        updateFaces(i, j, cx, cy, cz, step, true, add);
                     }
                     if (getTriangleDistanceSquared(i, j, step, false) <= this.radiusSquared) {
-                        pushTriangleVertices(i, j, cx, cy, cz, step, false, add);
-                        pushTriangleFace(i, j, cx, cy, cz, step, false, add);
+                        updateVertices(i, j, cx, cy, cz, step, false, add);
+                        updateFaces(i, j, cx, cy, cz, step, false, add);
                     }
                 }
             }
 
             this.geometry.computeFaceNormals();
             this.geometry.computeVertexNormals();
+            this.geometry.computeBoundingSphere();
             this.geometry.verticesNeedUpdate = true;
             this.geometry.elementsNeedUpdate = true;
 
             if (add) {
-
                 this.material = new THREE.MeshLambertMaterial({color: 0xffffff, vertexColors: THREE.VertexColors});
 
                 this.wireMaterial = new THREE.MeshLambertMaterial({
@@ -217,8 +217,6 @@ AFRAME.registerComponent('terrain', {
     }
 
 });
-
-
 
 AFRAME.registerPrimitive('a-terrain', {
     defaultComponents: {
