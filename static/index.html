@@ -5,6 +5,7 @@
     <meta name="description" content="Hello, WebVR! - Networked A-Frame Mesh Networking Demo">
     <script src="https://aframe.io/releases/0.8.2/aframe.min.js"></script>
     <script src="https://unpkg.com/@tlaukkan/aframe-atmosphere-component@0.0.2/atmosphere.js"></script>
+    <script src="//cdn.rawgit.com/donmccurdy/aframe-extras/v4.1.1/dist/aframe-extras.min.js"></script>
     <script src="tiny-terrain.js"></script>
 
 </head>
@@ -17,7 +18,15 @@
     <a-entity id="atmosphere" atmosphere="lightPosition: 1 5 -2;">
     </a-entity>
 
-    <a-terrain terrain="x:0;y:-5;z:0;radius:30;step:0.5;"></a-terrain>
+    <a-terrain terrain="x:0;y:0;z:0;radius:30;step:0.5;"></a-terrain>
+
+    <a-entity id="player" progressive-controls movement-controls="fly: true; speed: 0.3" position="0 1 0">
+        <a-entity camera="userHeight: 1.6" look-controls>
+        </a-entity>
+        <a-entity class="right-controller"></a-entity>
+        <a-entity class="left-controller"></a-entity>
+    </a-entity>
+
 </a-scene>
 </body>
 </html>

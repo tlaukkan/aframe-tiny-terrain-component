@@ -13,7 +13,7 @@ class TinyTerrain {
     constructor() {
         this.heightFunctions = new Map();
         this.heightFunctions.set('sin', (x, y) => {
-            return Math.sin(Math.PI * (Math.sqrt(x*x + y*y)) / 10);
+            return Math.sin(Math.PI * (Math.sqrt(x*x + y*y)) / 5);
         });
 
         this.colorFunctions = new Map();
