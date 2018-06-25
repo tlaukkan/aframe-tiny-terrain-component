@@ -9,6 +9,27 @@ if (typeof THREE === 'undefined') {
     throw new Error('THREE not available.');
 }
 
+class TinyTerrain {
+    constructor() {
+        this.heightFunctions = new Map();
+        this.heightFunctions.set('sin', (x, y) => {
+            return Math.sin(Math.PI * (Math.sqrt(x*x + y*y)) / 10);
+        });
+
+        this.colorFunctions = new Map();
+        this.colorFunctions.set('linear-palette', (y, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache) => {
+            const i = ((y - paletteRangeMin)/(paletteRangeMax-paletteRangeMin)).toFixed(paletteAccuracy);
+            if (!colorCache.has(i)) {
+                colorCache.set(i, colorPalette(i));
+            }
+            return colorCache.get(i);
+        });
+    }
+}
+
+window.TINY_TERRAIN = new TinyTerrain()
+
+
 AFRAME.registerComponent('terrain', {
     schema: {
         x: {type: 'number', default: 0},
@@ -16,8 +37,12 @@ AFRAME.registerComponent('terrain', {
         z: {type: 'number', default: 0},
         radius: {type: 'number', default: 20},
         step: {type: 'number', default: 1},
-        opacity: {type: 'number', default: 1},
-        color: {type: 'color', default: '#AAA'}
+        heightFunction: {type: 'string', default: 'sin'},
+        colorFunction: {type: 'string', default: 'linear-palette'},
+        palette: {type: 'string', default: '#d6a36e, #a1d66e'},
+        paletteAccuracy: {type: 'number', default: 2},
+        paletteRangeMin: {type: 'number', default: -1},
+        paletteRangeMax: {type: 'number', default: 1}
     },
 
     /**
@@ -39,25 +64,16 @@ AFRAME.registerComponent('terrain', {
         const dx = Math.cos(Math.PI / 3);
         const dy = Math.sin(Math.PI / 3);
 
-        const minHeight = -1;
-        const maxHeight = 1;
-        const palette = '#d6a36e, #a1d66e'.split(",").map(function(item) { return item.trim(); });
-        const paletteAccuracy = 2;
+        let getHeight = window.TINY_TERRAIN.heightFunctions.get(data.heightFunction)
+        let getColor = window.TINY_TERRAIN.colorFunctions.get(data.colorFunction)
 
-        const colormap = interpolate(palette);
-        const colorValues = new Map();
+        const paletteRangeMin = data.paletteRangeMin;
+        const paletteRangeMax = data.paletteRangeMax;
+        const palette = data.palette.split(",").map(function(item) { return item.trim(); });
+        const paletteAccuracy = data.paletteAccuracy;
 
-        let getColor = (y) => {
-            const i = ((y - minHeight)/(maxHeight-minHeight)).toFixed(paletteAccuracy);
-            if (!colorValues.has(i)) {
-                colorValues.set(i, colormap(i));
-            }
-            return colorValues.get(i);
-        };
-
-        let getHeight = (i, j) => {
-            return Math.sin(Math.PI * (i*i + j*j) / 100);
-        };
+        const colorPalette = interpolate(palette);
+        const colorCache = new Map();
 
         let getVector3 = (i, j) => {
             return new THREE.Vector3(cx + i + j * dx, cy + getHeight(cx + i + j * dx,cz + j * dy), cz + j * dy)
@@ -88,9 +104,9 @@ AFRAME.registerComponent('terrain', {
 
             let face = new THREE.Face3(v + 0, v + 1, v + 2);
             console.log(JSON.stringify(this.geometry.vertices[v + 0]));
-            face.vertexColors[0] = new THREE.Color(getColor(this.geometry.vertices[v + 0].y - cy));
-            face.vertexColors[1] = new THREE.Color(getColor(this.geometry.vertices[v + 1].y - cy));
-            face.vertexColors[2] = new THREE.Color(getColor(this.geometry.vertices[v + 2].y - cy));
+            face.vertexColors[0] = new THREE.Color(getColor(this.geometry.vertices[v + 0].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
+            face.vertexColors[1] = new THREE.Color(getColor(this.geometry.vertices[v + 1].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
+            face.vertexColors[2] = new THREE.Color(getColor(this.geometry.vertices[v + 2].y - cy, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache));
             this.geometry.faces.push(face);
         };
 
