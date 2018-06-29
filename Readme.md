@@ -1,11 +1,11 @@
-# A-Frame Atmosphere Component
+# A-Frame Tiny Terrain Component
 
-Stripped down to contain only atmospheric sky functions from : https://github.com/feiss/aframe-environment-component
+Tiny terrain component you can define your own height and color functions.
+You can also update your location and have the terrain redrawn as the player walks far enough.
 
 ## Demo
 
 https://tiny-terrain-demo.glitch.me/
-
 
 <!-- Remix Button -->
 <a href="https://glitch.com/edit/#!/remix/tiny-terrain-demo">
