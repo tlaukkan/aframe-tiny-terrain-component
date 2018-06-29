@@ -1,6 +1,6 @@
 {
   "name": "@tlaukkan/aframe-tiny-terrain-component",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A-Frame Tiny Terrain Component",
   "main": "dist/tiny-terrain.js",
   "scripts": {
