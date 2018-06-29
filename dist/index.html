@@ -19,5 +19,13 @@
 
     <a-terrain terrain="x:0;y:-5;z:0;radius:30;step:0.5;"></a-terrain>
 </a-scene>
+
+<script>
+    window.TINY_TERRAIN.heightFunctions.set('sin', (x, y) => {
+        const d = Math.sqrt(x*x + y*y);
+        return Math.sin(Math.PI * (d * d) / 100) / (1 + d * d / 100) + 20 * ( -1 + 1 / (1 + d * d / 500));
+    });
+
+</script>
 </body>
 </html>

@@ -12,12 +12,12 @@ if (typeof THREE === 'undefined') {
 class TinyTerrain {
     constructor() {
         this.heightFunctions = new Map();
-        this.heightFunctions.set('sin', (x, y) => {
-            return Math.sin(Math.PI * (Math.sqrt(x*x + y*y)) / 10);
+        this.heightFunctions.set('default', (x, y) => {
+            return 0;
         });
 
         this.colorFunctions = new Map();
-        this.colorFunctions.set('linear-palette', (y, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache) => {
+        this.colorFunctions.set('default', (y, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache) => {
             const i = ((y - paletteRangeMin)/(paletteRangeMax-paletteRangeMin)).toFixed(paletteAccuracy);
             if (!colorCache.has(i)) {
                 colorCache.set(i, colorPalette(i));
@@ -46,14 +46,14 @@ AFRAME.registerComponent('terrain', {
         x: {type: 'number', default: 0},
         y: {type: 'number', default: 0},
         z: {type: 'number', default: 0},
-        radiusEdgeCount: {type: 'number', default: 15},
-        edgeLength: {type: 'number', default: 2},
-        heightFunction: {type: 'string', default: 'sin'},
-        colorFunction: {type: 'string', default: 'linear-palette'},
-        palette: {type: 'string', default: '#d6a36e, #a1d66e'},
+        radiusEdgeCount: {type: 'number', default: 300},
+        edgeLength: {type: 'number', default: 1},
+        heightFunction: {type: 'string', default: 'default'},
+        colorFunction: {type: 'string', default: 'default'},
+        palette: {type: 'string', default: '#4f654e, #606f4e, #818553, #9b9557, #bab269, #c4bc74'},
         paletteAccuracy: {type: 'number', default: 2},
-        paletteRangeMin: {type: 'number', default: -1},
-        paletteRangeMax: {type: 'number', default: 1}
+        paletteRangeMin: {type: 'number', default: -10},
+        paletteRangeMax: {type: 'number', default: 10}
     },
 
     /**
@@ -67,6 +67,16 @@ AFRAME.registerComponent('terrain', {
         this.edgeLengthSquared = this.edgeLength * this.edgeLength;
         this.radiusEdgeCount = data.radiusEdgeCount;
         this.radiusEdgeCountSquared = this.radiusEdgeCount * this.radiusEdgeCount;
+        this.terrainUpdateDistanceSquared = Math.pow(this.radiusEdgeCount / 2, 2);
+        const paletteRangeMin = data.paletteRangeMin;
+        const paletteRangeMax = data.paletteRangeMax;
+        const palette = data.palette.split(",").map(function(item) { return item.trim(); });
+        const paletteAccuracy = data.paletteAccuracy;
+        const colorPalette = interpolate(palette);
+        const colorCache = new Map();
+
+        let getHeight = window.TINY_TERRAIN.heightFunctions.get(data.heightFunction);
+        let getColor = window.TINY_TERRAIN.colorFunctions.get(data.colorFunction);
 
         this.triangles = new Array(Math.pow(2 * this.radiusEdgeCount + 1, 2));
         this.vertices = new Array(2 * this.radiusEdgeCount + 1);
@@ -74,18 +84,12 @@ AFRAME.registerComponent('terrain', {
         this.primaryFaces = new Array(2 * this.radiusEdgeCount + 1);
         this.secondaryFaces = new Array(2 * this.radiusEdgeCount + 1);
 
-        this.terrainUpdateDistanceSquared = Math.pow(this.radiusEdgeCount / 4, 2);
-
-        let getHeight = window.TINY_TERRAIN.heightFunctions.get(data.heightFunction);
-        let getColor = window.TINY_TERRAIN.colorFunctions.get(data.colorFunction);
-
-        const paletteRangeMin = data.paletteRangeMin;
-        const paletteRangeMax = data.paletteRangeMax;
-        const palette = data.palette.split(",").map(function(item) { return item.trim(); });
-        const paletteAccuracy = data.paletteAccuracy;
-
-        const colorPalette = interpolate(palette);
-        const colorCache = new Map();
+        for (let i = 0; i < 2 * this.radiusEdgeCount + 1; i++) {
+            this.vertices[i] = new Array(2 * this.radiusEdgeCount + 1);
+            this.vertexIndices[i] = new Array(2 * this.radiusEdgeCount + 1);
+            this.primaryFaces[i] = new Array(2 * this.radiusEdgeCount + 1);
+            this.secondaryFaces[i] = new Array(2 * this.radiusEdgeCount + 1);
+        }
 
         this.geometry = new THREE.Geometry();
 
@@ -187,13 +191,6 @@ AFRAME.registerComponent('terrain', {
         this.cy = cy;
         this.cz = cz;
 
-        for (let i = 0; i < 2 * this.radiusEdgeCount + 1; i++) {
-            this.vertices[i] = new Array(2 * this.radiusEdgeCount + 1);
-            this.vertexIndices[i] = new Array(2 * this.radiusEdgeCount + 1);
-            this.primaryFaces[i] = new Array(2 * this.radiusEdgeCount + 1);
-            this.secondaryFaces[i] = new Array(2 * this.radiusEdgeCount + 1);
-        }
-
         for (let i = -this.radiusEdgeCount; i < this.radiusEdgeCount; i += 1) {
             for (let j = -this.radiusEdgeCount; j < this.radiusEdgeCount; j += 1) {
                 if (getTriangleDistanceSquared(i, j, true) <= this.radiusEdgeCountSquared) {
@@ -231,10 +228,16 @@ AFRAME.registerPrimitive('a-terrain', {
         terrain: {}
     },
     mappings: {
-        x: 'terrain.x',
-        y: 'terrain.y',
-        z: 'terrain.z',
-        radiusEdgeCount: 'terrain.radiusEdgeCount',
-        edgeLength: 'terrain.edgeLength'
+        'x': 'terrain.x',
+        'y': 'terrain.y',
+        'z': 'terrain.z',
+        'radius-edge-count': 'terrain.radiusEdgeCount',
+        'edge-length': 'terrain.edgeLength',
+        'height-function': 'terrain.heightFunction',
+        'color-function': 'terrain.colorFunction',
+        'palette': 'terrain.palette',
+        'palette-accuracy': 'terrain.paletteAccuracy',
+        'palette-range-min': 'terrain.paletteRangeMin',
+        'palette-range-max': 'terrain.paletteRangeMax'
     }
 });

@@ -11,22 +11,35 @@
 </head>
 <body>
 
+<script>
+    window.TINY_TERRAIN.heightFunctions.set('hill-with-sine-wave', (x, y) => {
+        const d = Math.sqrt(x*x + y*y);
+        return 1 * Math.sin(Math.PI * (d * d) / 100) / (1 + d * d / 100) + 20 + 20 * ( -1 + 1 / (1 + d * d / 500));
+    });
+
+    window.TINY_TERRAIN.colorFunctions.set('linear', (y, colorPalette, paletteRangeMin, paletteRangeMax, paletteAccuracy, colorCache) => {
+        const i = ((y - paletteRangeMin)/(paletteRangeMax-paletteRangeMin)).toFixed(paletteAccuracy);
+        if (!colorCache.has(i)) {
+            colorCache.set(i, colorPalette(i));
+        }
+        return colorCache.get(i);
+    });
+</script>
+
 <a-scene light="defaultLightsEnabled: false">
-    <a-entity light="type: ambient; color: #BBB; intensity: 0.5"></a-entity>
-    <a-entity light="type: directional; color: #FFF; intensity: 0.5" position="1 3 0.5"></a-entity>
+    <a-entity light="type: ambient; color: #BBB; intensity: 0.3"></a-entity>
+    <a-entity light="type: directional; color: #FFF; intensity: 0.7" position=" 0.3 0.05 -1"></a-entity>
 
-    <a-terrain id="terrain" terrain="x:0;y:0;z:0;"></a-terrain>
+    <a-terrain id="terrain" height-function="hill-with-sine-wave" radius-edge-count="200" edge-length = "1.5" color-function="linear" palette = "#4f654e, #606f4e, #818553, #9b9557, #bab269, #c4bc74" palette-accuracy="3" palette-range-min="0" palette-range-max="20" ></a-terrain>
 
-    <a-entity id="player" progressive-controls movement-controls="fly: true; speed: 0.3" position="0 1 0" atmosphere="lightPosition: 1 5 -2;">
-        <a-entity camera="userHeight: 1.6" look-controls>
-        </a-entity>
-        <a-entity class="right-controller"></a-entity>
-        <a-entity class="left-controller"></a-entity>
+    <a-entity id="player" atmosphere="lightPosition: 0.3 0.05 -1;" progressive-controls movement-controls="fly: true; speed: 0.3" position="0 22 0">
+        <a-entity camera look-controls></a-entity><a-entity class="right-controller"></a-entity><a-entity class="left-controller"></a-entity>
     </a-entity>
 
 </a-scene>
 
 <script>
+
     var player = document.getElementById('player');
     var terrain = document.getElementById('terrain');
     setInterval(() => {
@@ -35,6 +48,7 @@
             terrain.setAttribute('terrain', 'x:' + position.x + ';y:0;z:' + position.z + ';')
         }
     }, 200);
+
 </script>
 
 

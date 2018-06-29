@@ -19,6 +19,10 @@ https://naf-mesh-adapter-demo.glitch.me
     </a-entity>
 ---
 
+## Develop
+
+npm run start:dev
+
 ## Publish package
 
 ### First publish
