@@ -41,7 +41,7 @@ window.TINY_TERRAIN = new TinyTerrain()
 const ui = 1 / Math.sin(Math.PI / 3);
 const uj = 1;
 
-AFRAME.registerComponent('terrain', {
+AFRAME.registerComponent('tiny-terrain', {
     schema: {
         x: {type: 'number', default: 0},
         y: {type: 'number', default: 0},
@@ -223,21 +223,21 @@ AFRAME.registerComponent('terrain', {
 
 });
 
-AFRAME.registerPrimitive('a-terrain', {
+AFRAME.registerPrimitive('a-tiny-terrain', {
     defaultComponents: {
         terrain: {}
     },
     mappings: {
-        'x': 'terrain.x',
-        'y': 'terrain.y',
-        'z': 'terrain.z',
-        'radius-edge-count': 'terrain.radiusEdgeCount',
-        'edge-length': 'terrain.edgeLength',
-        'height-function': 'terrain.heightFunction',
-        'color-function': 'terrain.colorFunction',
-        'palette': 'terrain.palette',
-        'palette-accuracy': 'terrain.paletteAccuracy',
-        'palette-range-min': 'terrain.paletteRangeMin',
-        'palette-range-max': 'terrain.paletteRangeMax'
+        'x': 'tiny-terrain.x',
+        'y': 'tiny-terrain.y',
+        'z': 'tiny-terrain.z',
+        'radius-edge-count': 'tiny-terrain.radiusEdgeCount',
+        'edge-length': 'tiny-terrain.edgeLength',
+        'height-function': 'tiny-terrain.heightFunction',
+        'color-function': 'tiny-terrain.colorFunction',
+        'palette': 'tiny-terrain.palette',
+        'palette-accuracy': 'tiny-terrain.paletteAccuracy',
+        'palette-range-min': 'tiny-terrain.paletteRangeMin',
+        'palette-range-max': 'tiny-terrain.paletteRangeMax'
     }
 });
