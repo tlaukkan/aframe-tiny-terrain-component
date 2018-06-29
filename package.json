@@ -2,7 +2,7 @@
   "name": "@tlaukkan/aframe-tiny-terrain-component",
   "version": "0.0.4",
   "description": "A-Frame Tiny Terrain Component",
-  "main": "dist/tiny-terrain.js",
+  "main": "dist/terrain.js",
   "scripts": {
     "lint": "eslint src test *.js",
     "start:dev": "webpack-dev-server --open",
@@ -17,7 +17,8 @@
   },
   "keywords": [
     "aframe",
-    "atmosphere",
+    "tiny",
+    "terrain",
     "component"
   ],
   "author": "Tommi Laukkanen",

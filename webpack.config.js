@@ -5,7 +5,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 module.exports = {
     entry: './src/index.js',
     output: {
-        filename: 'tiny-terrain.js',
+        filename: 'terrain.js',
         path: path.resolve(__dirname, 'dist')
     },
     module: {
